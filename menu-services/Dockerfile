@@ -1,20 +1,8 @@
-
-FROM node:18-alpine AS builder
-
+FROM node:18
 WORKDIR /app
-
 COPY package*.json ./
-RUN npm ci
-
+RUN npm install
 COPY . .
-FROM node:18-alpine
-
-WORKDIR /app
-
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/index.js ./
-
-EXPOSE 3000
-
-CMD ["node", "index.js"] 
+EXPOSE 3001
+ENV NODE_ENV=production
+CMD ["npm", "start"]

@@ -11,11 +11,12 @@
   "author": "Cafe Management System Team",
   "license": "ISC",
   "dependencies": {
-    "express": "^5.1.0",
-    "kafkajs": "^2.2.4",
-    "mongoose": "^8.13.2",
     "cors": "^2.8.5",
-    "dotenv": "^16.3.1"
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "http-proxy-middleware": "^3.0.5",
+    "kafkajs": "^2.2.4",
+    "mongoose": "^8.13.2"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"

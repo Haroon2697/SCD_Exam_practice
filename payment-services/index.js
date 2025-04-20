@@ -1,17 +1,51 @@
 const express = require('express');
 const axios = require('axios');
+require('dotenv').config();
 const mongoose = require('mongoose');
 const app = express();
 const port = 3003;
 
 app.use(express.json());
 
-// MongoDB connection
-mongoose.connect('mongodb+srv://i222661:Relatio1@cluster0.4bbbx.mongodb.net/', { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log('Payment Service connected to MongoDB'))
-  .catch(err => console.error('MongoDB connection error:', err));
+// MongoDB connection with retry mechanism
+const connectMongo = async () => {
+  const maxRetries = 5;
+  let retries = 0;
 
-// Payment Schema
+  while (retries < maxRetries) {
+    try {
+      await mongoose.connect(process.env.MONGODB_URI);
+      console.log('Payment Service connected to MongoDB');
+      return;
+    } catch (err) {
+      retries++;
+      console.error(`MongoDB connection attempt ${retries} failed:`, err);
+      if (retries === maxRetries) {
+        console.error('Max retries reached. Will continue to retry...');
+        // Instead of exiting, we'll keep retrying
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        retries = 0; // Reset retries to keep trying
+      } else {
+        await new Promise(resolve => setTimeout(resolve, 5000));
+      }
+    }
+  }
+};
+
+// Initialize MongoDB connection
+connectMongo();
+
+// Handle MongoDB connection events
+mongoose.connection.on('disconnected', () => {
+  console.log('MongoDB disconnected. Attempting to reconnect...');
+  connectMongo();
+});
+
+mongoose.connection.on('error', (err) => {
+  console.error('MongoDB connection error:', err);
+});
+
+// Move schema definition before route handlers
 const paymentSchema = new mongoose.Schema({
   id: { type: Number, required: true, unique: true },
   orderId: Number,
@@ -21,6 +55,7 @@ const paymentSchema = new mongoose.Schema({
 
 const Payment = mongoose.model('Payment', paymentSchema);
 
+// Fix template literal syntax and URL variable name
 app.post('/payments', async (req, res) => {
   const { orderId, amount } = req.body;
   if (!orderId || !amount) {
@@ -29,7 +64,7 @@ app.post('/payments', async (req, res) => {
 
   try {
     // Verify order with Order Service
-    const orderResponse = await axios.get(`http://order-service:3002/orders/${orderId}`);
+    const orderResponse = await axios.get(`${process.env.ORDER_SERVICES_URI}/orders/${orderId}`);
     const order = orderResponse.data;
 
     if (order.total !== amount) {
@@ -40,15 +75,41 @@ app.post('/payments', async (req, res) => {
     const payment = new Payment({ id: paymentCount + 1, orderId, amount, status: 'completed' });
     await payment.save();
 
-    // Update order status
-    await axios.patch(`http://order-service:3002/orders/${orderId}`, { status: 'paid' });
+    // Fix template literal syntax and URL variable name
+    await axios.patch(`${process.env.ORDER_SERVICES_URI}/orders/${orderId}`, { status: 'paid' });
 
     res.status(201).json(payment);
   } catch (error) {
+    console.error('Payment processing error:', error);
     res.status(500).json({ error: 'Payment processing failed' });
   }
 });
 
-app.listen(port, () => {
+// Graceful shutdown handler
+const gracefulShutdown = async () => {
+  console.log('Received shutdown signal. Starting graceful shutdown...');
+  
+  try {
+    // Close MongoDB connection
+    await mongoose.connection.close();
+    console.log('MongoDB connection closed');
+    
+    // Close the server
+    server.close(() => {
+      console.log('Server closed');
+      process.exit(0);
+    });
+  } catch (err) {
+    console.error('Error during shutdown:', err);
+    process.exit(1);
+  }
+};
+
+// Handle shutdown signals
+process.on('SIGTERM', gracefulShutdown);
+process.on('SIGINT', gracefulShutdown);
+
+// Store server instance
+const server = app.listen(port, () => {
   console.log(`Payment Service running on port ${port}`);
 });

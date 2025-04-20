@@ -2,6 +2,8 @@ const express = require('express');
 const mongoose = require('mongoose');
 const app = express();
 const port = 3004;
+const dotenv = require('dotenv');
+dotenv.config();
 
 app.use(express.json());
 
@@ -10,7 +12,7 @@ const connectMongo = async () => {
   let retries = 5;
   while (retries > 0) {
     try {
-      await mongoose.connect('mongodb+srv://i222661:Relatio1@cluster0.4bbbx.mongodb.net/');
+      await mongoose.connect(process.env.MONGODB_URI);
       console.log('Inventory Service connected to MongoDB');
       break;
     } catch (error) {

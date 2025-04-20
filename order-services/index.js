@@ -3,6 +3,8 @@ const axios = require('axios');
 const mongoose = require('mongoose');
 const app = express();
 const port = 3002;
+const dotenv = require('dotenv');
+dotenv.config();
 
 app.use(express.json());
 
@@ -11,7 +13,7 @@ const connectMongo = async () => {
   let retries = 5;
   while (retries > 0) {
     try {
-      await mongoose.connect('mongodb+srv://i222661:Relatio1@cluster0.4bbbx.mongodb.net/');
+      await mongoose.connect(process.env.MONGODB_URI);
       console.log('Order Service connected to MongoDB');
       break;
     } catch (error) {
@@ -44,14 +46,14 @@ app.post('/orders', async (req, res) => {
   try {
     // Validate customer if provided
     if (customerId) {
-      const customerResponse = await axios.get(`http://customer-service:3005/customers/${customerId}`);
+      const customerResponse = await axios.get(`${process.env.CUSTOMER_SERVICES_URI}/customers/${customerId}`);
       if (!customerResponse.data) {
         return res.status(400).json({ error: 'Customer not found' });
       }
     }
 
     // Validate items with Menu Service
-    const menuResponse = await axios.get('http://menu-service:3001/menu');
+    const menuResponse = await axios.get(`${process.env.MENU_SERVICES_URI}/menu`);
     const menuItems = menuResponse.data;
 
     const orderItems = [];
@@ -80,11 +82,11 @@ app.post('/orders', async (req, res) => {
     await order.save();
 
     // Update inventory
-    await axios.post('http://inventory-service:3004/inventory/update', { items });
+    await axios.post(`${process.env.INVENTORY_SERVICES_URI}/inventory/update`, { items });
 
     // Update loyalty points if customer exists
     if (customerId) {
-      await axios.post('http://customer-service:3005/customers/update-points', {
+      await axios.post(`${process.env.CUSTOMER_SERVICES_URI}/customers/update-points`, {
         customerId,
         points: Math.floor(total),
       });
