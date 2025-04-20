@@ -10,30 +10,43 @@ jobs:
   build:
     runs-on: ubuntu-latest
     
-    strategy:
-      matrix:
-        service: [api-gateway, menu-services, order-services, payment-services, inventory-services, customer-services]
-        
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v3
-      
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-    
-    - name: Login to Docker Hub
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.haroon295 }}
-        password: ${{ secrets.@Haroon2697 }}
-    
-    - name: Build and push
-      uses: docker/build-push-action@v5
-      with:
-        context: ./${{ matrix.service }}
-        push: ${{ github.event_name != 'pull_request' }}
-        tags: |
-          ${{ secrets.DOCKER_HUB_USERNAME }}/cafe-${{ matrix.service }}:latest
-          ${{ secrets.DOCKER_HUB_USERNAME }}/cafe-${{ matrix.service }}:${{ github.sha }}
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: haroon295
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Build and push services
+        env:
+          DOCKER_BUILDKIT: 1
+        run: |
+          services=(
+            "api-gateway"
+            "menu-services"
+            "order-services"
+            "payment-services"
+            "inventory-services"
+            "customer-services"
+          )
+          
+          for service in "${services[@]}"; do
+            echo "Building and pushing $service..."
+            docker buildx build \
+              --cache-from type=registry,ref=haroon295/cafe-$service:buildcache \
+              --cache-to type=registry,ref=haroon295/cafe-$service:buildcache,mode=max \
+              --platform linux/amd64 \
+              --push \
+              -t haroon295/cafe-$service:latest \
+              -t haroon295/cafe-$service:${{ github.sha }} \
+              ./$service
+          done
