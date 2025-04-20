@@ -23,19 +23,30 @@ jobs:
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
-          username: Haroon5295
+          username: haroon295
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
       - name: Build and push services
         env:
           DOCKER_BUILDKIT: 1
         run: |
-          for service in api-gateway menu-services order-services payment-services inventory-services customer-services; do
+          services=(
+            "api-gateway"
+            "menu-services"
+            "order-services"
+            "payment-services"
+            "inventory-services"
+            "customer-services"
+          )
+          
+          for service in "${services[@]}"; do
             echo "Building and pushing $service..."
             docker buildx build \
+              --cache-from type=registry,ref=haroon295/cafe-$service:buildcache \
+              --cache-to type=registry,ref=haroon295/cafe-$service:buildcache,mode=max \
               --platform linux/amd64 \
               --push \
-              -t haroon5295/cafe-$service:latest \
-              -t haroon5295/cafe-$service:${{ github.sha }} \
+              -t haroon295/cafe-$service:latest \
+              -t haroon295/cafe-$service:${{ github.sha }} \
               ./$service
           done
