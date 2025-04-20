@@ -29,13 +29,19 @@ jobs:
       - name: Build and push services
         env:
           DOCKER_BUILDKIT: 1
+          DOCKER_USERNAME: haroon5295
         run: |
           for service in api-gateway menu-services order-services payment-services inventory-services customer-services; do
             echo "Building and pushing $service..."
             docker buildx build \
               --platform linux/amd64 \
               --push \
-              -t haroon295/cafe-$service:latest \
-              -t haroon295/cafe-$service:${{ github.sha }} \
+              -t $DOCKER_USERNAME/cafe-$service:latest \
+              -t $DOCKER_USERNAME/cafe-$service:${{ github.sha }} \
               ./$service
+            
+            if [ $? -ne 0 ]; then
+              echo "Failed to build/push $service"
+              exit 1
+            fi
           done
