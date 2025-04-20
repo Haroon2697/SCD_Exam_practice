@@ -1,0 +1,73 @@
+name: Docker Build and Push
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push API Gateway
+        uses: docker/build-push-action@v4
+        with:
+          context: ./api-gateway
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/api-gateway:latest
+
+      - name: Build and push Customer Service
+        uses: docker/build-push-action@v4
+        with:
+          context: ./customer-services
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/customer-service:latest
+
+      - name: Build and push Inventory Service
+        uses: docker/build-push-action@v4
+        with:
+          context: ./inventory-services
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/inventory-service:latest
+
+      - name: Build and push Payment Service
+        uses: docker/build-push-action@v4
+        with:
+          context: ./payment-services
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/payment-service:latest
+
+      - name: Build and push Order Service
+        uses: docker/build-push-action@v4
+        with:
+          context: ./order-services
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/order-service:latest
+
+      - name: Build and push Menu Service
+        uses: docker/build-push-action@v4
+        with:
+          context: ./menu-services
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/menu-service:latest 
